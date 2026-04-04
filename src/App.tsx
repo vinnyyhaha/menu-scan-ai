@@ -137,8 +137,9 @@ function MenuScanApp() {
     if (!image) return;
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
-      setError("API Key is missing or invalid. Please check your environment variables.");
+    if (!apiKey) {
+      setError("API Key is missing. Please add 'GEMINI_API_KEY' to your Secrets in AI Studio.");
+      setIsProcessing(false);
       return;
     }
 
