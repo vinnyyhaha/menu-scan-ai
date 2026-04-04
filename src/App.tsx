@@ -138,9 +138,16 @@ function MenuScanApp() {
   const processMenu = async () => {
     if (!image) return;
 
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
-      setError("API Key is missing. Please add 'GEMINI_API_KEY' to your Secrets in AI Studio.");
+    // Debug logging (safe)
+    console.log("Checking API Key availability...");
+    const viteKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const processKey = process.env.GEMINI_API_KEY;
+    
+    const apiKey = viteKey || processKey;
+    
+    if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.length < 10) {
+      console.error("API Key missing from both import.meta.env and process.env");
+      setError("API Key is missing. Please add 'GEMINI_API_KEY' to your Secrets in AI Studio (Key icon in bottom-left).");
       setIsProcessing(false);
       return;
     }
@@ -229,10 +236,13 @@ function MenuScanApp() {
   };
 
   const testConnection = async () => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+    const viteKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const processKey = process.env.GEMINI_API_KEY;
+    const apiKey = viteKey || processKey;
+
+    if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.length < 10) {
       setConnectionStatus('error');
-      setError("API Key is missing. Please add 'GEMINI_API_KEY' to your Secrets in AI Studio.");
+      setError("API Key is missing. Please add 'GEMINI_API_KEY' to your Secrets in AI Studio (Key icon in bottom-left).");
       return;
     }
 
