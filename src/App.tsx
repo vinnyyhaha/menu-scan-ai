@@ -93,6 +93,7 @@ export default function App() {
 
 function MenuScanApp() {
   const [image, setImage] = useState<string | null>(null);
+  const [mimeType, setMimeType] = useState<string>("image/jpeg");
   const [isProcessing, setIsProcessing] = useState(false);
   const [menuData, setMenuData] = useState<MenuItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +122,7 @@ function MenuScanApp() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setMimeType(file.type || "image/jpeg");
       const reader = new FileReader();
       reader.onloadend = () => {
         setImage(reader.result as string);
@@ -134,11 +136,17 @@ function MenuScanApp() {
   const processMenu = async () => {
     if (!image) return;
 
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+      setError("API Key is missing or invalid. Please check your environment variables.");
+      return;
+    }
+
     setIsProcessing(true);
     setError(null);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey });
       const base64Data = image.split(',')[1];
       
       const response = await ai.models.generateContent({
@@ -146,8 +154,8 @@ function MenuScanApp() {
         contents: [
           {
             parts: [
-              { inlineData: { mimeType: "image/jpeg", data: base64Data } },
-              { text: "Extract all food and drink items from this menu. Organize by category. Return as a JSON array of objects with category, name, description, and price fields." },
+              { inlineData: { mimeType, data: base64Data } },
+              { text: "Extract all food and drink items from this menu. Organize by category. Return as a JSON array of objects with category, name, description, and price fields. If the image is too blurry, try to extract as much as possible." },
             ],
           },
         ],
@@ -169,7 +177,12 @@ function MenuScanApp() {
         },
       });
 
-      const result = JSON.parse(response.text || "[]");
+      const text = response.text;
+      if (!text) {
+        throw new Error("Empty response from AI engine.");
+      }
+
+      const result = JSON.parse(text);
       setMenuData(result);
 
       const newScan: ScanHistory = {
@@ -179,9 +192,16 @@ function MenuScanApp() {
         imageName: `Scan ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       };
       setHistory(prev => [newScan, ...prev].slice(0, 10));
-    } catch (err) {
-      console.error("Error processing menu:", err);
-      setError("We couldn't process this image. Please ensure the menu is clearly visible and try again.");
+    } catch (err: any) {
+      console.error("Detailed Error Processing Menu:", err);
+      
+      if (err.message?.includes("API_KEY_INVALID")) {
+        setError("Invalid API Key. Please verify your Gemini API key in the settings.");
+      } else if (err.message?.includes("quota")) {
+        setError("API Quota exceeded. Please try again later.");
+      } else {
+        setError("We couldn't process this image. Please ensure the menu is clearly visible and try again.");
+      }
     } finally {
       setIsProcessing(false);
     }
