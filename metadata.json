@@ -1,0 +1,7 @@
+{
+  "name": "MenuScan AI",
+  "description": "Convert restaurant menu photos into structured Excel sheets using AI-powered OCR and data extraction.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
