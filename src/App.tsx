@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Component, ReactNode, ErrorInfo } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import * as XLSX from 'xlsx';
 import { 
@@ -47,8 +47,8 @@ interface ScanHistory {
 }
 
 // Error Boundary Component for Production Stability
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: React.ReactNode }) {
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -57,7 +57,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
   }
 
@@ -95,6 +95,8 @@ function MenuScanApp() {
   const [image, setImage] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("image/jpeg");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [menuData, setMenuData] = useState<MenuItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<ScanHistory[]>([]);
@@ -136,8 +138,8 @@ function MenuScanApp() {
   const processMenu = async () => {
     if (!image) return;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
       setError("API Key is missing. Please add 'GEMINI_API_KEY' to your Secrets in AI Studio.");
       setIsProcessing(false);
       return;
@@ -226,6 +228,37 @@ function MenuScanApp() {
     setError(null);
   };
 
+  const testConnection = async () => {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+      setConnectionStatus('error');
+      setError("API Key is missing. Please add 'GEMINI_API_KEY' to your Secrets in AI Studio.");
+      return;
+    }
+
+    setIsTestingConnection(true);
+    setConnectionStatus('idle');
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: "Say 'API Connection Successful' in one sentence.",
+      });
+      
+      if (response.text) {
+        setConnectionStatus('success');
+      } else {
+        setConnectionStatus('error');
+      }
+    } catch (err) {
+      console.error("API Connection Test Failed:", err);
+      setConnectionStatus('error');
+      setError("API Connection Test Failed. Please check your API key and network.");
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-white overflow-hidden font-sans antialiased">
       {/* Sidebar - Professional SaaS Style */}
@@ -269,6 +302,33 @@ function MenuScanApp() {
             <HelpCircle size={18} />
             Support
           </button>
+
+          {/* API Status Indicator */}
+          <div className="pt-4 mt-4 border-t border-gray-200">
+            <button 
+              onClick={testConnection}
+              disabled={isTestingConnection}
+              className={cn(
+                "w-full flex items-center justify-between px-3 py-2 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all",
+                connectionStatus === 'success' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                connectionStatus === 'error' ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                "bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  "w-1.5 h-1.5 rounded-full",
+                  connectionStatus === 'success' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" :
+                  connectionStatus === 'error' ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" :
+                  "bg-gray-400"
+                )} />
+                {isTestingConnection ? "Verifying..." : connectionStatus === 'success' ? "API Active" : connectionStatus === 'error' ? "API Offline" : "Verify API"}
+              </div>
+              <div className="opacity-50">
+                {connectionStatus === 'success' ? "✓" : connectionStatus === 'error' ? "!" : "?"}
+              </div>
+            </button>
+          </div>
         </div>
       </aside>
 
