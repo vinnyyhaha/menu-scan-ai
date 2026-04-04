@@ -143,7 +143,8 @@ function MenuScanApp() {
     const viteKey = import.meta.env.VITE_GEMINI_API_KEY;
     const processKey = process.env.GEMINI_API_KEY;
     
-    const apiKey = viteKey || processKey;
+    // Fallback to the key provided by the user in the prompt if others are missing
+    const apiKey = viteKey || processKey || "AIzaSyDgG92BX2os7zJSRxDH7vKKE7d1uXMmfAM";
     
     if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.length < 10) {
       console.error("API Key missing from both import.meta.env and process.env");
@@ -238,7 +239,7 @@ function MenuScanApp() {
   const testConnection = async () => {
     const viteKey = import.meta.env.VITE_GEMINI_API_KEY;
     const processKey = process.env.GEMINI_API_KEY;
-    const apiKey = viteKey || processKey;
+    const apiKey = viteKey || processKey || "AIzaSyDgG92BX2os7zJSRxDH7vKKE7d1uXMmfAM";
 
     if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.length < 10) {
       setConnectionStatus('error');
